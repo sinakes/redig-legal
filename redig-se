@@ -1,1 +1,1119 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redig — Ordentlig Träningsspårning för iOS</title>
+    <meta name="description" content="Redig är en integritetsfokuserad träningsapp byggd i Sverige. Logga set, reps och vikter. Avancerade träningsmetoder. Helt gratis att börja.">
+    <meta property="og:title" content="Redig — Ordentlig Träningsspårning">
+    <meta property="og:description" content="Spåra din styrketräning med en app som respekterar din integritet. Byggd i Sverige. Helt gratis att börja.">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="sv_SE">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        /* ═══════════════════════════════════════
+           DESIGN TOKENS
+           ═══════════════════════════════════════ */
+        :root {
+            --bg-deep: #07070A;
+            --bg-surface: #0F0F13;
+            --bg-card: #141418;
+            --bg-card-hover: #1A1A20;
+            --accent: #FF4D00;
+            --accent-soft: #FF6B2C;
+            --accent-glow: rgba(255, 77, 0, 0.12);
+            --text-primary: #F0F0F2;
+            --text-secondary: #9A9AA0;
+            --text-muted: #5A5A62;
+            --border: rgba(255, 255, 255, 0.06);
+            --border-accent: rgba(255, 77, 0, 0.2);
+            --font-display: 'Plus Jakarta Sans', sans-serif;
+            --font-body: 'Plus Jakarta Sans', sans-serif;
+            --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+            --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ═══════════════════════════════════════
+           RESET & BASE
+           ═══════════════════════════════════════ */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            -webkit-text-size-adjust: 100%;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Grain overlay for texture */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+            opacity: 0.5;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        img {
+            max-width: 100%;
+            display: block;
+        }
+
+        /* ═══════════════════════════════════════
+           SCROLL REVEAL ANIMATIONS
+           ═══════════════════════════════════════ */
+        .reveal {
+            opacity: 0;
+            transform: translateY(32px);
+            transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
+        }
+
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .reveal-delay-1 { transition-delay: 0.1s; }
+        .reveal-delay-2 { transition-delay: 0.2s; }
+        .reveal-delay-3 { transition-delay: 0.3s; }
+        .reveal-delay-4 { transition-delay: 0.4s; }
+        .reveal-delay-5 { transition-delay: 0.5s; }
+
+        /* ═══════════════════════════════════════
+           LAYOUT
+           ═══════════════════════════════════════ */
+        .container {
+            max-width: 1120px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        section {
+            padding: 100px 0;
+        }
+
+        @media (max-width: 768px) {
+            section { padding: 72px 0; }
+        }
+
+        /* ═══════════════════════════════════════
+           NAVIGATION
+           ═══════════════════════════════════════ */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 16px 0;
+            background: rgba(7, 7, 10, 0.7);
+            backdrop-filter: blur(24px) saturate(1.4);
+            -webkit-backdrop-filter: blur(24px) saturate(1.4);
+            border-bottom: 1px solid var(--border);
+            transition: background 0.3s var(--ease-smooth);
+        }
+
+        nav .container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nav-logo {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 22px;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+        }
+
+        .nav-logo span {
+            color: var(--accent);
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--text-primary);
+        }
+
+        .nav-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: var(--accent);
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 10px;
+            transition: transform 0.2s var(--ease-out), box-shadow 0.2s;
+        }
+
+        .nav-cta:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(255, 77, 0, 0.25);
+        }
+
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+        }
+
+        /* ═══════════════════════════════════════
+           HERO
+           ═══════════════════════════════════════ */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            padding-top: 80px;
+        }
+
+        /* Radial glow behind heading */
+        .hero-glow {
+            position: absolute;
+            width: 700px;
+            height: 700px;
+            background: radial-gradient(circle, rgba(255, 77, 0, 0.1) 0%, rgba(255, 77, 0, 0.03) 40%, transparent 70%);
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            filter: blur(60px);
+            pointer-events: none;
+        }
+
+        /* Subtle grid lines */
+        .hero-grid {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+            background-size: 80px 80px;
+            mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 70%);
+            -webkit-mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            max-width: 800px;
+            padding: 0 24px;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+            opacity: 0;
+            animation: fadeUp 0.8s var(--ease-out) 0.2s forwards;
+        }
+
+        .hero-badge .dot {
+            width: 6px;
+            height: 6px;
+            background: #22C55E;
+            border-radius: 50%;
+            animation: pulse-dot 2s ease infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .hero h1 {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: clamp(56px, 10vw, 120px);
+            line-height: 0.95;
+            letter-spacing: -0.04em;
+            margin-bottom: 24px;
+            opacity: 0;
+            animation: fadeUp 0.8s var(--ease-out) 0.4s forwards;
+        }
+
+        .hero h1 .accent {
+            color: var(--accent);
+            display: block;
+        }
+
+        .hero-sub {
+            font-size: clamp(16px, 2.5vw, 20px);
+            color: var(--text-secondary);
+            max-width: 520px;
+            margin: 0 auto 40px;
+            line-height: 1.6;
+            opacity: 0;
+            animation: fadeUp 0.8s var(--ease-out) 0.6s forwards;
+        }
+
+        .hero-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            justify-content: center;
+            opacity: 0;
+            animation: fadeUp 0.8s var(--ease-out) 0.8s forwards;
+        }
+
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 32px;
+            background: var(--accent);
+            color: #fff;
+            font-family: var(--font-body);
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: transform 0.2s var(--ease-out), box-shadow 0.3s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(255, 77, 0, 0.3);
+        }
+
+        .btn-primary svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 32px;
+            background: transparent;
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 16px;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(24px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Trust badges under hero */
+        .trust-bar {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            padding: 32px 0;
+            border-top: 1px solid var(--border);
+            margin-top: 64px;
+            opacity: 0;
+            animation: fadeUp 0.8s var(--ease-out) 1.0s forwards;
+        }
+
+        .trust-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .trust-item svg {
+            width: 18px;
+            height: 18px;
+            color: var(--accent);
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 600px) {
+            .trust-bar {
+                flex-direction: column;
+                gap: 16px;
+                align-items: center;
+            }
+        }
+
+        /* ═══════════════════════════════════════
+           FEATURES
+           ═══════════════════════════════════════ */
+        .features {
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .section-label {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .section-heading {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: clamp(32px, 5vw, 48px);
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: 16px;
+        }
+
+        .section-sub {
+            font-size: 17px;
+            color: var(--text-secondary);
+            max-width: 520px;
+            line-height: 1.6;
+            margin-bottom: 56px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        @media (max-width: 900px) {
+            .features-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 560px) {
+            .features-grid { grid-template-columns: 1fr; }
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            transition: border-color 0.3s, background 0.3s, transform 0.3s var(--ease-out);
+        }
+
+        .feature-card:hover {
+            border-color: var(--border-accent);
+            background: var(--bg-card-hover);
+            transform: translateY(-2px);
+        }
+
+        .feature-icon {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--accent-glow);
+            border: 1px solid var(--border-accent);
+            border-radius: 12px;
+            margin-bottom: 20px;
+            color: var(--accent);
+        }
+
+        .feature-icon svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .feature-card h3 {
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 18px;
+            margin-bottom: 8px;
+            letter-spacing: -0.01em;
+        }
+
+        .feature-card p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.55;
+        }
+
+        /* ═══════════════════════════════════════
+           ADVANCED TRAINING SECTION
+           ═══════════════════════════════════════ */
+        .advanced {
+            position: relative;
+        }
+
+        .advanced-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 64px;
+            align-items: center;
+        }
+
+        @media (max-width: 768px) {
+            .advanced-content {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+        }
+
+        .set-types-visual {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .set-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 18px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            transition: border-color 0.3s, transform 0.2s var(--ease-out), background 0.3s;
+            cursor: default;
+        }
+
+        .set-tag:hover {
+            border-color: var(--border-accent);
+            transform: translateY(-2px);
+            background: var(--bg-card-hover);
+        }
+
+        .set-tag .tag-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .set-tag .tag-dot.orange { background: var(--accent); }
+        .set-tag .tag-dot.blue { background: #3B82F6; }
+        .set-tag .tag-dot.green { background: #22C55E; }
+        .set-tag .tag-dot.purple { background: #A855F7; }
+        .set-tag .tag-dot.pink { background: #EC4899; }
+        .set-tag .tag-dot.yellow { background: #EAB308; }
+        .set-tag .tag-dot.cyan { background: #06B6D4; }
+        .set-tag .tag-dot.red { background: #EF4444; }
+
+        /* ═══════════════════════════════════════
+           PRIVACY SECTION
+           ═══════════════════════════════════════ */
+        .privacy {
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .privacy-statement {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: clamp(36px, 6vw, 64px);
+            letter-spacing: -0.03em;
+            line-height: 1.05;
+            margin-bottom: 24px;
+        }
+
+        .privacy-statement .accent {
+            color: var(--accent);
+        }
+
+        .privacy-body {
+            font-size: 17px;
+            color: var(--text-secondary);
+            max-width: 560px;
+            margin: 0 auto 48px;
+            line-height: 1.7;
+        }
+
+        .privacy-badges {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .privacy-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 22px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .privacy-badge svg {
+            width: 20px;
+            height: 20px;
+            color: #22C55E;
+            flex-shrink: 0;
+        }
+
+        /* ═══════════════════════════════════════
+           PRICING / CTA
+           ═══════════════════════════════════════ */
+        .pricing {
+            text-align: center;
+        }
+
+        .pricing-cards {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            max-width: 680px;
+            margin: 0 auto 48px;
+        }
+
+        @media (max-width: 600px) {
+            .pricing-cards { grid-template-columns: 1fr; }
+        }
+
+        .pricing-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 36px 28px;
+            text-align: left;
+            transition: border-color 0.3s, transform 0.3s var(--ease-out);
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .pricing-card.featured {
+            border-color: var(--border-accent);
+            background: linear-gradient(165deg, var(--bg-card) 0%, rgba(255, 77, 0, 0.04) 100%);
+        }
+
+        .pricing-tier {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .pricing-card.featured .pricing-tier {
+            color: var(--accent);
+        }
+
+        .pricing-card h3 {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 24px;
+            letter-spacing: -0.02em;
+            margin-bottom: 16px;
+        }
+
+        .pricing-features {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .pricing-features li {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .pricing-features li svg {
+            width: 18px;
+            height: 18px;
+            color: #22C55E;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .pricing-card.featured .pricing-features li svg {
+            color: var(--accent);
+        }
+
+        /* Final CTA */
+        .final-cta {
+            margin-top: 16px;
+        }
+
+        .final-cta p {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-top: 12px;
+        }
+
+        /* ═══════════════════════════════════════
+           FOOTER
+           ═══════════════════════════════════════ */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 48px 0;
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 24px;
+        }
+
+        .footer-left {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .footer-brand {
+            font-family: var(--font-display);
+            font-weight: 800;
+            font-size: 18px;
+            letter-spacing: -0.02em;
+        }
+
+        .footer-brand span {
+            color: var(--accent);
+        }
+
+        .footer-company {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 28px;
+            list-style: none;
+        }
+
+        .footer-links a {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: var(--text-primary);
+        }
+
+        @media (max-width: 600px) {
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+            .footer-left { align-items: center; }
+        }
+
+        /* ═══════════════════════════════════════
+           THICK RULE DIVIDER (Brutalist accent)
+           ═══════════════════════════════════════ */
+        .thick-rule {
+            width: 48px;
+            height: 4px;
+            background: var(--accent);
+            border-radius: 2px;
+            border: none;
+            margin-bottom: 24px;
+        }
+
+        /* ═══════════════════════════════════════
+           UTILITY
+           ═══════════════════════════════════════ */
+        .text-accent { color: var(--accent); }
+    </style>
+</head>
+<body>
+
+    <!-- ═══════════ NAVIGATION ═══════════ -->
+    <nav>
+        <div class="container">
+            <a href="#" class="nav-logo">Redig<span>.</span></a>
+            <ul class="nav-links">
+                <li><a href="#funktioner">Funktioner</a></li>
+                <li><a href="#integritet">Integritet</a></li>
+                <li><a href="#premium">Premium</a></li>
+                <li><a href="https://apps.apple.com/se/app/redig/id6755793121" class="nav-cta">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
+                    Ladda ner
+                </a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- ═══════════ HERO ═══════════ -->
+    <section class="hero">
+        <div class="hero-glow"></div>
+        <div class="hero-grid"></div>
+        <div class="hero-content">
+            <div class="hero-badge">
+                <span class="dot"></span>
+                Ny version ute nu
+            </div>
+            <h1>
+                Redig
+                <span class="accent">träning.</span>
+            </h1>
+            <p class="hero-sub">
+                Ordentlig träningsspårning som aldrig lämnar din telefon.
+                Logga set, reps och vikter — helt utan konto.
+            </p>
+            <div class="hero-actions">
+                <a href="https://apps.apple.com/se/app/redig/id6755793121" class="btn-primary">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                    Ladda ner gratis
+                </a>
+                <a href="#funktioner" class="btn-secondary">
+                    Utforska funktioner
+                </a>
+            </div>
+            <div class="trust-bar">
+                <div class="trust-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    100% Lokalt
+                </div>
+                <div class="trust-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    Byggd i Sverige
+                </div>
+                <div class="trust-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    Helt gratis start
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════ FEATURES ═══════════ -->
+    <section class="features" id="funktioner">
+        <div class="container">
+            <div class="reveal">
+                <p class="section-label">Funktioner</p>
+                <hr class="thick-rule">
+                <h2 class="section-heading">Allt du behöver.<br>Inget du inte behöver.</h2>
+                <p class="section-sub">Byggd för folk som faktiskt tränar. Inga onödiga sociala flöden, inga reklamavbrott — bara ren träningsspårning.</p>
+            </div>
+
+            <div class="features-grid">
+                <!-- Feature 1: Logga set -->
+                <div class="feature-card reveal reveal-delay-1">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="10" width="4" height="4" rx="1"/><rect x="18" y="10" width="4" height="4" rx="1"/><line x1="6" y1="12" x2="18" y2="12"/><rect x="8" y="8" width="3" height="8" rx="1"/><rect x="13" y="8" width="3" height="8" rx="1"/></svg>
+                    </div>
+                    <h3>Logga varje set</h3>
+                    <p>Vikter, repetitioner och set — allt spåras i realtid medan du tränar. Snabb inmatning utan krångel.</p>
+                </div>
+
+                <!-- Feature 2: Träningsprogram -->
+                <div class="feature-card reveal reveal-delay-2">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
+                    </div>
+                    <h3>Träningsprogram</h3>
+                    <p>Push/Pull/Legs, överkropp/underkropp, eller egna splittar. Automatisk rotation mellan pass.</p>
+                </div>
+
+                <!-- Feature 3: Vilotimer -->
+                <div class="feature-card reveal reveal-delay-3">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </div>
+                    <h3>Vilotimer</h3>
+                    <p>Automatisk nedräkning mellan set med notiser och Live Activity på låsskärmen. Aldrig missa ett set.</p>
+                </div>
+
+                <!-- Feature 4: 1RM-spårning -->
+                <div class="feature-card reveal reveal-delay-1">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                    </div>
+                    <h3>1RM &amp; analys</h3>
+                    <p>Beräknad one-rep max, styrkehistorik och trender. Se exakt hur du utvecklas över tid.</p>
+                </div>
+
+                <!-- Feature 5: iCloud-synk -->
+                <div class="feature-card reveal reveal-delay-2">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+                    </div>
+                    <h3>iCloud-synk</h3>
+                    <p>Krypterad synkronisering mellan alla dina Apple-enheter. Fungerar helt offline — synkar när du har nät.</p>
+                </div>
+
+                <!-- Feature 6: Smart Shuffle -->
+                <div class="feature-card reveal reveal-delay-3">
+                    <div class="feature-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 16-4 4-4-4"/><path d="M17 20V4"/><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/></svg>
+                    </div>
+                    <h3>Smart Shuffle</h3>
+                    <p>Rekommendationer baserade på vila och återhämtning. Rätt övningar, rätt dag — helt automatiskt.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════ ADVANCED TRAINING ═══════════ -->
+    <section class="advanced" id="avancerat">
+        <div class="container">
+            <div class="advanced-content">
+                <div class="reveal">
+                    <p class="section-label">Avancerad träning</p>
+                    <hr class="thick-rule">
+                    <h2 class="section-heading">Byggt för alla nivåer.</h2>
+                    <p class="section-sub" style="margin-bottom: 24px;">
+                        Från nybörjarens första set till den erfarna atletens periodiserade program.
+                        Redig stödjer alla träningsmetoder du behöver.
+                    </p>
+                    <p style="font-size: 14px; color: var(--text-muted); line-height: 1.7;">
+                        Varje settyp har anpassade kontroller. Dropsets spårar viktminskningar automatiskt.
+                        Supersets kopplar ihop övningar sömlöst.
+                    </p>
+                </div>
+                <div class="set-types-visual reveal reveal-delay-2">
+                    <div class="set-tag"><span class="tag-dot green"></span> Uppvärmning</div>
+                    <div class="set-tag"><span class="tag-dot blue"></span> Arbetsset</div>
+                    <div class="set-tag"><span class="tag-dot orange"></span> Dropset</div>
+                    <div class="set-tag"><span class="tag-dot cyan"></span> Superset</div>
+                    <div class="set-tag"><span class="tag-dot yellow"></span> Till failure</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════ PRIVACY ═══════════ -->
+    <section class="privacy" id="integritet">
+        <div class="container">
+            <div class="reveal">
+                <p class="section-label">Integritet</p>
+                <hr class="thick-rule" style="margin-left: auto; margin-right: auto;">
+                <h2 class="privacy-statement">
+                    Din data.<br><span class="accent">Bara din.</span>
+                </h2>
+                <p class="privacy-body">
+                    All träningsdata lagras lokalt på din enhet och i ditt privata iCloud-konto.
+                    Inga servrar. Inga tredjeparter. Inga annonsprofiler.
+                    Vi kan inte se din data — och det är meningen.
+                </p>
+            </div>
+            <div class="privacy-badges reveal reveal-delay-2">
+                <div class="privacy-badge">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    Ingen spårning
+                </div>
+                <div class="privacy-badge">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    Krypterad iCloud
+                </div>
+                <div class="privacy-badge">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    Inget konto krävs
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════ PRICING ═══════════ -->
+    <section class="pricing" id="premium">
+        <div class="container">
+            <div class="reveal">
+                <p class="section-label">Kom igång</p>
+                <hr class="thick-rule" style="margin-left: auto; margin-right: auto;">
+                <h2 class="section-heading">Börja gratis.<br>Uppgradera när du vill.</h2>
+                <p class="section-sub" style="max-width: 480px; margin-left: auto; margin-right: auto;">
+                    Full träningsspårning utan kostnad. Premium låser upp allt för den som vill ha mer.
+                </p>
+            </div>
+
+            <div class="pricing-cards reveal reveal-delay-2">
+                <!-- Free tier -->
+                <div class="pricing-card">
+                    <p class="pricing-tier">Gratis</p>
+                    <h3>Grundläggande</h3>
+                    <ul class="pricing-features">
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Full träningsspårning
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Alla settyper och timer
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            30 dagars analyshistorik
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            iCloud-synk
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Premium tier -->
+                <div class="pricing-card featured">
+                    <p class="pricing-tier">Premium</p>
+                    <h3>Komplett</h3>
+                    <ul class="pricing-features">
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Allt i Gratis
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Obegränsad historik och analys
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Smarta rekommendationer och insikter
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            Återhämtningsanalys
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="final-cta reveal reveal-delay-3">
+                <a href="https://apps.apple.com/se/app/redig/id6755793121" class="btn-primary">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+                    Ladda ner gratis på App Store
+                </a>
+                <p>Tillgänglig för iPhone och iPad. Kräver iOS 18 eller senare.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ═══════════ FOOTER ═══════════ -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-left">
+                    <div class="footer-brand">Redig<span>.</span></div>
+                    <p class="footer-company">Modum Ventures &middot; Sverige</p>
+                </div>
+                <ul class="footer-links">
+                    <li><a href="privacy.html">Integritetspolicy</a></li>
+                    <li><a href="terms.html">Villkor</a></li>
+                    <li><a href="support.html">Support</a></li>
+                    <li><a href="mailto:redig@modumventures.com">Kontakt</a></li>
+                </ul>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ═══════════ SCROLL REVEAL JS ═══════════ -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // IntersectionObserver for scroll-triggered reveals
+            const revealElements = document.querySelectorAll('.reveal');
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, {
+                threshold: 0.15,
+                rootMargin: '0px 0px -40px 0px'
+            });
+
+            revealElements.forEach(el => observer.observe(el));
+
+            // Smooth scroll for anchor links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', (e) => {
+                    const target = document.querySelector(anchor.getAttribute('href'));
+                    if (target) {
+                        e.preventDefault();
+                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                });
+            });
+
+            // Subtle parallax on hero glow following scroll
+            const heroGlow = document.querySelector('.hero-glow');
+            if (heroGlow) {
+                window.addEventListener('scroll', () => {
+                    const scrollY = window.scrollY;
+                    heroGlow.style.transform = `translate(-50%, calc(-50% + ${scrollY * 0.15}px))`;
+                }, { passive: true });
+            }
+        });
+    </script>
+</body>
+</html>
 
